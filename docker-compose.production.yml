@@ -1,0 +1,77 @@
+# ============================================
+# Docker Compose - Production
+# ============================================
+# Usage:
+#   docker compose -f docker-compose.production.yml up -d
+#   docker compose -f docker-compose.production.yml logs -f app
+# ============================================
+
+version: "3.8"
+
+services:
+  # --- PostgreSQL Database ---
+  db:
+    image: postgres:16-alpine
+    container_name: reiseblog-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-reiseblog}
+      POSTGRES_USER: ${POSTGRES_USER:-reiseblog}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-reiseblog} -d ${POSTGRES_DB:-reiseblog}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    # KHÔNG expose port ra ngoài - chỉ internal network
+    # ports:
+    #   - "5432:5432"  # CHỈ bật khi debug
+
+  # --- Next.js Application ---
+  app:
+    image: ${DOCKER_IMAGE:-ghcr.io/langhoangtien/reiseblog:latest}
+    container_name: reiseblog-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-reiseblog}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-reiseblog}?schema=public
+      - NEXTAUTH_URL=${NEXTAUTH_URL:?NEXTAUTH_URL is required}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - AWS_REGION=${AWS_REGION:-eu-central-1}
+      - AWS_BUCKET_NAME=${AWS_BUCKET_NAME:-}
+      - AWS_FOLDER_PREFIX=${AWS_FOLDER_PREFIX:-}
+      - RUN_MIGRATIONS=${RUN_MIGRATIONS:-false}
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+        reservations:
+          memory: 256M
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  internal:
+    driver: bridge

@@ -1,0 +1,27 @@
+# ============================================
+# .dockerignore - Reiseblog
+# ============================================
+# Đặt tại nextjs_space/.dockerignore
+# ============================================
+
+node_modules
+.next
+.build
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+*.md
+!README.md
+.vscode
+.idea
+__pycache__
+*.pyc
+.DS_Store
+*.log
+deploy/DEPLOY_GUIDE.md
+.deploy
+out
+dist
+build

@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: reiseblog-db-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: reiseblog
+      POSTGRES_USER: reiseblog
+      POSTGRES_PASSWORD: 123456
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_dev_data:

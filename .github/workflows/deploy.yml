@@ -1,0 +1,180 @@
+# ============================================
+# GitHub Actions - CI/CD Production Deploy
+# ============================================
+# Trigger: push to main branch
+# Registry: GitHub Container Registry (ghcr.io)
+# Deploy: SSH to VPS + docker compose
+# ============================================
+
+name: Deploy Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # cho phép chạy thủ công
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/reiseblog
+
+jobs:
+  # ==============================
+  # Job 1: Build & Test
+  # ==============================
+  build:
+    name: Build & Push Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+      short_sha: ${{ steps.vars.outputs.short_sha }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set variables
+        id: vars
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: yarn
+          cache-dependency-path: nextjs_space/yarn.lock
+
+      - name: Install dependencies
+        working-directory: nextjs_space
+        run: yarn install --frozen-lockfile
+
+      - name: Type check
+        working-directory: nextjs_space
+        run: yarn tsc --noEmit
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest
+            type=raw,value=${{ steps.vars.outputs.short_sha }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./nextjs_space
+          file: ./nextjs_space/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NEXT_OUTPUT_MODE=standalone
+
+  # ==============================
+  # Job 2: Deploy to VPS
+  # ==============================
+  deploy:
+    name: Deploy to VPS
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script_stop: true
+          script: |
+            set -e
+            echo "========================================"
+            echo " Deploying Reiseblog - $(date)"
+            echo "========================================"
+
+            # --- Variables ---
+            APP_DIR="/opt/reiseblog"
+            COMPOSE_FILE="$APP_DIR/docker-compose.production.yml"
+            ENV_FILE="$APP_DIR/.env.production"
+            IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.short_sha }}"
+
+            # --- Pull new image ---
+            echo "[1/5] Pulling image: $IMAGE"
+            docker pull $IMAGE
+
+            # --- Tag as current + backup previous ---
+            CURRENT=$(docker inspect --format='{{.Config.Image}}' reiseblog-app 2>/dev/null || echo "none")
+            if [ "$CURRENT" != "none" ] && [ "$CURRENT" != "$IMAGE" ]; then
+              echo "[2/5] Tagging previous image as rollback..."
+              docker tag $CURRENT ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:previous 2>/dev/null || true
+            fi
+
+            # --- Update DOCKER_IMAGE in env ---
+            echo "[3/5] Updating image reference..."
+            sed -i "s|^DOCKER_IMAGE=.*|DOCKER_IMAGE=$IMAGE|" $ENV_FILE
+
+            # --- Run migrations if needed ---
+            echo "[4/5] Checking migrations..."
+            if grep -q "RUN_MIGRATIONS=true" $ENV_FILE; then
+              echo "  Running database migrations..."
+              docker compose -f $COMPOSE_FILE --env-file $ENV_FILE run --rm \
+                -e RUN_MIGRATIONS=true app \
+                npx prisma migrate deploy --schema=./prisma/schema.prisma
+              # Reset flag after successful migration
+              sed -i "s|^RUN_MIGRATIONS=true|RUN_MIGRATIONS=false|" $ENV_FILE
+              echo "  Migrations complete."
+            else
+              echo "  No migrations needed."
+            fi
+
+            # --- Deploy with zero-downtime ---
+            echo "[5/5] Deploying..."
+            docker compose -f $COMPOSE_FILE --env-file $ENV_FILE up -d --remove-orphans
+
+            # --- Wait for health check ---
+            echo ""
+            echo "Waiting for health check..."
+            for i in $(seq 1 30); do
+              if docker inspect --format='{{.State.Health.Status}}' reiseblog-app 2>/dev/null | grep -q healthy; then
+                echo "\u2705 App is healthy!"
+                break
+              fi
+              if [ $i -eq 30 ]; then
+                echo "\u26a0\ufe0f Health check timeout - check logs!"
+                docker logs --tail 50 reiseblog-app
+                exit 1
+              fi
+              sleep 2
+            done
+
+            # --- Cleanup old images ---
+            echo ""
+            echo "Cleaning up old images..."
+            docker image prune -f --filter "until=168h" || true
+
+            echo ""
+            echo "========================================"
+            echo " Deploy complete! Image: $IMAGE"
+            echo "========================================"

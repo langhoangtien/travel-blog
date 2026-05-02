@@ -1,0 +1,187 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  EDITOR
+  AUTHOR
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum MediaType {
+  COVER
+  CONTENT
+  AVATAR
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  slug      String?  @unique
+  bio       String?
+  avatar    String?
+  role      UserRole @default(AUTHOR)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  posts     Post[]
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  posts       Post[]
+}
+
+model Tag {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  createdAt DateTime  @default(now())
+  posts     PostTag[]
+}
+
+model PostTag {
+  postId String
+  tagId  String
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag    Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+  @@index([tagId])
+}
+
+model Post {
+  id              String     @id @default(cuid())
+  title           String
+  slug            String     @unique
+  excerpt         String?
+  content         String?
+  coverImage      Media?     @relation("CoverImage", fields: [coverImageId], references: [id], onDelete: SetNull)
+  coverImageId    String?    @unique
+  author          User       @relation(fields: [authorId], references: [id])
+  authorId        String
+  category        Category?  @relation(fields: [categoryId], references: [id])
+  categoryId      String?
+  tags            PostTag[]
+  status          PostStatus @default(DRAFT)
+  metaTitle       String?
+  metaDescription String?
+  publishedAt     DateTime?
+  viewCount       Int        @default(0)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  media           Media[]    @relation("PostMedia")
+
+  @@index([status])
+  @@index([authorId])
+  @@index([categoryId])
+  @@index([publishedAt])
+  @@index([viewCount])
+}
+
+model Media {
+  id                 String    @id @default(cuid())
+  post               Post?     @relation("PostMedia", fields: [postId], references: [id], onDelete: Cascade)
+  postId             String?
+  filename           String
+  cloud_storage_path String
+  url                String
+  mimeType           String
+  size               Int
+  type               MediaType
+  altText            String?
+  isPublic           Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+  coverForPost       Post?     @relation("CoverImage")
+}
+
+model Newsletter {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model SiteConfig {
+  id                    String   @id @default(cuid())
+
+  siteName              String   @default("Reiseblog")
+  siteTagline           String?
+  siteDescription       String?
+  siteUrl               String?
+  contactEmail          String?
+  contactPhone          String?
+  locationText          String?
+
+  logoText              String?
+  logoImageUrl          String?
+  faviconUrl            String?
+  defaultOgImageUrl     String?
+
+  primaryColor          String?  @default("sky-blue")
+  
+  showSearch             Boolean @default(true)
+  showCategoriesInHeader Boolean @default(true)
+  showFooterCategories   Boolean @default(true)
+  showFooterRecentPosts  Boolean @default(true)
+
+  heroTitle             String?
+  heroSubtitle          String?
+  heroImageUrl          String?
+  heroPrimaryCtaText    String?
+  heroPrimaryCtaHref    String?
+  heroSecondaryCtaText  String?
+  heroSecondaryCtaHref  String?
+
+  footerDescription     String?
+  footerCopyright       String?
+
+  facebookUrl           String?
+  instagramUrl          String?
+  youtubeUrl            String?
+  tiktokUrl             String?
+
+  showHeroSection       Boolean  @default(true)
+  showFeaturedSection   Boolean  @default(true)
+  showCategorySection   Boolean  @default(true)
+  showPopularSection    Boolean  @default(true)
+  showNewsletterSection Boolean  @default(true)
+
+  featuredPostsCount    Int      @default(3)
+  latestPostsCount      Int      @default(6)
+  popularPostsCount     Int      @default(5)
+
+  contentImageMaxWidth Int @default(1600)
+  contentImageQuality  Int @default(80)
+
+  coverImageMaxWidth   Int @default(1920)
+  coverImageQuality    Int @default(82)
+
+  avatarImageMaxWidth  Int @default(400)
+  avatarImageQuality   Int @default(80)
+
+  imageFormat          String @default("webp")
+  enableImageOptimization Boolean @default(true)
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
