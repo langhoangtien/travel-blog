@@ -1,12 +1,12 @@
-const path = require('path');
+const path = require("path");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  distDir: process.env.NEXT_DIST_DIR || '.next',
-  output: process.env.NEXT_OUTPUT_MODE,
+  distDir: process.env.NEXT_DIST_DIR || ".next",
+  output: "standalone",
   productionBrowserSourceMaps: false,
   experimental: {
-    outputFileTracingRoot: path.join(__dirname, '../'),
+    outputFileTracingRoot: path.join(__dirname, "../"),
   },
   eslint: {
     ignoreDuringBuilds: true,
@@ -17,8 +17,8 @@ const nextConfig = {
   images: { unoptimized: true },
   webpack: (config, { isServer }) => {
     if (!isServer) {
-      config.output.filename = 'static/chunks/[name]-[contenthash:8].js';
-      config.output.chunkFilename = 'static/chunks/[contenthash:16].js';
+      config.output.filename = "static/chunks/[name]-[contenthash:8].js";
+      config.output.chunkFilename = "static/chunks/[contenthash:16].js";
     }
     return config;
   },
