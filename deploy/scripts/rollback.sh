@@ -7,12 +7,12 @@
 # ============================================
 set -e
 
-APP_DIR="/opt/reiseblog"
+APP_DIR="/opt/nerovia"
 COMPOSE_FILE="$APP_DIR/docker-compose.production.yml"
 ENV_FILE="$APP_DIR/.env.production"
 
 echo "========================================"
-echo " ROLLBACK - Reiseblog"
+echo " ROLLBACK - Nerovia"
 echo " Time: $(date)"
 echo "========================================"
 
@@ -24,7 +24,7 @@ PREVIOUS="${IMAGE_REPO}:previous"
 if ! docker image inspect $PREVIOUS >/dev/null 2>&1; then
     echo "\u274c Không tìm thấy image rollback: $PREVIOUS"
     echo "Các image hiện có:"
-    docker images | grep reiseblog
+    docker images | grep nerovia
     exit 1
 fi
 
@@ -48,7 +48,7 @@ docker compose -f $COMPOSE_FILE --env-file $ENV_FILE up -d --remove-orphans
 
 # Health check
 for i in $(seq 1 30); do
-    if docker inspect --format='{{.State.Health.Status}}' reiseblog-app 2>/dev/null | grep -q healthy; then
+    if docker inspect --format='{{.State.Health.Status}}' nerovia-app 2>/dev/null | grep -q healthy; then
         echo ""
         echo "\u2705 Rollback successful! App is healthy."
         exit 0
@@ -57,5 +57,5 @@ for i in $(seq 1 30); do
 done
 
 echo "\u26a0\ufe0f Rollback health check timeout!"
-docker logs --tail 30 reiseblog-app
+docker logs --tail 30 nerovia-app
 exit 1

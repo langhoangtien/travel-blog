@@ -11,11 +11,11 @@ name: Deploy Production
 on:
   push:
     branches: [main]
-  workflow_dispatch:  # cho phép chạy thủ công
+  workflow_dispatch: # cho phép chạy thủ công
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/reiseblog
+  IMAGE_NAME: ${{ github.repository_owner }}/travel_blog
 
 jobs:
   # ==============================
@@ -111,11 +111,11 @@ jobs:
           script: |
             set -e
             echo "========================================"
-            echo " Deploying Reiseblog - $(date)"
+            echo " Deploying Nerovia - $(date)"
             echo "========================================"
 
             # --- Variables ---
-            APP_DIR="/opt/reiseblog"
+            APP_DIR="/opt/nerovia"
             COMPOSE_FILE="$APP_DIR/docker-compose.production.yml"
             ENV_FILE="$APP_DIR/.env.production"
             IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.short_sha }}"
@@ -125,7 +125,7 @@ jobs:
             docker pull $IMAGE
 
             # --- Tag as current + backup previous ---
-            CURRENT=$(docker inspect --format='{{.Config.Image}}' reiseblog-app 2>/dev/null || echo "none")
+            CURRENT=$(docker inspect --format='{{.Config.Image}}' nerovia-app 2>/dev/null || echo "none")
             if [ "$CURRENT" != "none" ] && [ "$CURRENT" != "$IMAGE" ]; then
               echo "[2/5] Tagging previous image as rollback..."
               docker tag $CURRENT ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:previous 2>/dev/null || true
@@ -157,13 +157,13 @@ jobs:
             echo ""
             echo "Waiting for health check..."
             for i in $(seq 1 30); do
-              if docker inspect --format='{{.State.Health.Status}}' reiseblog-app 2>/dev/null | grep -q healthy; then
+              if docker inspect --format='{{.State.Health.Status}}' nerovia-app 2>/dev/null | grep -q healthy; then
                 echo "\u2705 App is healthy!"
                 break
               fi
               if [ $i -eq 30 ]; then
                 echo "\u26a0\ufe0f Health check timeout - check logs!"
-                docker logs --tail 50 reiseblog-app
+                docker logs --tail 50 nerovia-app
                 exit 1
               fi
               sleep 2

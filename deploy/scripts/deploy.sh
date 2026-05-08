@@ -7,7 +7,7 @@
 # ============================================
 set -e
 
-APP_DIR="/opt/reiseblog"
+APP_DIR="/opt/nerovia"
 COMPOSE_FILE="$APP_DIR/docker-compose.production.yml"
 ENV_FILE="$APP_DIR/.env.production"
 REGISTRY="ghcr.io"
@@ -21,7 +21,7 @@ IMAGE_REPO=$(grep '^DOCKER_IMAGE=' $ENV_FILE | cut -d= -f2 | cut -d: -f1)
 IMAGE="${IMAGE_REPO}:${IMAGE_TAG}"
 
 echo "========================================"
-echo " Manual Deploy - Reiseblog"
+echo " Manual Deploy - Nerovia"
 echo " Image: $IMAGE"
 echo " Time: $(date)"
 echo "========================================"
@@ -31,7 +31,7 @@ echo "[1/4] Pulling image..."
 docker pull $IMAGE
 
 # Backup current
-CURRENT=$(docker inspect --format='{{.Config.Image}}' reiseblog-app 2>/dev/null || echo "none")
+CURRENT=$(docker inspect --format='{{.Config.Image}}' nerovia-app 2>/dev/null || echo "none")
 if [ "$CURRENT" != "none" ] && [ "$CURRENT" != "$IMAGE" ]; then
     echo "[2/4] Saving rollback tag..."
     docker tag $CURRENT ${IMAGE_REPO}:previous 2>/dev/null || true
@@ -47,7 +47,7 @@ docker compose -f $COMPOSE_FILE --env-file $ENV_FILE up -d --remove-orphans
 # Health check
 echo "[4/4] Health check..."
 for i in $(seq 1 30); do
-    if docker inspect --format='{{.State.Health.Status}}' reiseblog-app 2>/dev/null | grep -q healthy; then
+    if docker inspect --format='{{.State.Health.Status}}' nerovia-app 2>/dev/null | grep -q healthy; then
         echo ""
         echo "\u2705 Deploy successful! App is healthy."
         exit 0
@@ -58,5 +58,5 @@ done
 
 echo ""
 echo "\u26a0\ufe0f Health check timeout!"
-docker logs --tail 30 reiseblog-app
+docker logs --tail 30 nerovia-app
 exit 1

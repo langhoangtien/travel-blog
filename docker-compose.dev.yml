@@ -1,11 +1,11 @@
 services:
   db:
     image: postgres:16-alpine
-    container_name: reiseblog-db-dev
+    container_name: nerovia-db-dev
     restart: unless-stopped
     environment:
-      POSTGRES_DB: reiseblog
-      POSTGRES_USER: reiseblog
+      POSTGRES_DB: nerovia
+      POSTGRES_USER: nerovia
       POSTGRES_PASSWORD: 123456
     ports:
       - "5432:5432"

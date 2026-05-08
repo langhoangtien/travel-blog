@@ -6,12 +6,12 @@
 # ============================================
 set -e
 
-APP_DIR="/opt/reiseblog"
+APP_DIR="/opt/nerovia"
 COMPOSE_FILE="$APP_DIR/docker-compose.production.yml"
 ENV_FILE="$APP_DIR/.env.production"
 
 echo "========================================"
-echo " Database Migration - Reiseblog"
+echo " Database Migration - Nerovia"
 echo "========================================"
 
 echo "Running prisma migrate deploy..."

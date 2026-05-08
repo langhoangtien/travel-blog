@@ -58,6 +58,7 @@
 ```
 
 **Quyết định kỹ thuật:**
+
 - **Registry**: GitHub Container Registry (ghcr.io) - miễn phí, tích hợp sẵn với GitHub Actions
 - **Nginx trên host**: Dễ cấu hình SSL, rate limiting, không cần container thêm
 - **PostgreSQL trong Docker**: Dễ backup, dễ migrate, volume persistent
@@ -68,6 +69,7 @@
 ## 2. Chuẩn Bị VPS
 
 ### Yêu cầu tối thiểu
+
 - **OS**: Ubuntu 22.04 LTS hoặc 24.04 LTS
 - **RAM**: 1GB+ (khuyến nghị 2GB)
 - **Disk**: 20GB+ SSD
@@ -163,12 +165,12 @@ sudo mkdir -p /var/www/certbot
 
 Vào **GitHub repo → Settings → Secrets and variables → Actions**, thêm các secrets sau:
 
-| Secret Name | Mô tả | Ví dụ |
-|---|---|---|
-| `SSH_HOST` | IP hoặc domain của VPS | `123.456.789.0` |
-| `SSH_USER` | User SSH (không dùng root) | `deploy` |
-| `SSH_PORT` | SSH port | `22` (hoặc port custom) |
-| `SSH_PRIVATE_KEY` | Nội dung private key SSH | Nội dung file `~/.ssh/id_ed25519` |
+| Secret Name       | Mô tả                      | Ví dụ                             |
+| ----------------- | -------------------------- | --------------------------------- |
+| `SSH_HOST`        | IP hoặc domain của VPS     | `123.456.789.0`                   |
+| `SSH_USER`        | User SSH (không dùng root) | `deploy`                          |
+| `SSH_PORT`        | SSH port                   | `22` (hoặc port custom)           |
+| `SSH_PRIVATE_KEY` | Nội dung private key SSH   | Nội dung file `~/.ssh/id_ed25519` |
 
 ### Tạo SSH key cho GitHub Actions:
 
@@ -201,16 +203,16 @@ echo "YOUR_GITHUB_PAT" | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password
 
 ```bash
 # Từ máy local, copy các file cấu hình lên VPS:
-scp docker-compose.production.yml deploy@your-vps-ip:/opt/reiseblog/
-scp .env.production.example deploy@your-vps-ip:/opt/reiseblog/
-scp -r deploy/scripts deploy@your-vps-ip:/opt/reiseblog/
+scp docker-compose.production.yml deploy@your-vps-ip:/opt/nerovia/
+scp .env.production.example deploy@your-vps-ip:/opt/nerovia/
+scp -r deploy/scripts deploy@your-vps-ip:/opt/nerovia/
 ```
 
 ### 5.2 Cấu hình environment
 
 ```bash
 # Trên VPS:
-cd /opt/reiseblog
+cd /opt/nerovia
 cp .env.production.example .env.production
 nano .env.production
 ```
@@ -219,16 +221,16 @@ nano .env.production
 
 ```env
 # Database
-POSTGRES_DB=reiseblog
-POSTGRES_USER=reiseblog
+POSTGRES_DB=nerovia
+POSTGRES_USER=nerovia
 POSTGRES_PASSWORD=your_strong_password_here
 
 # Auth
-NEXTAUTH_URL=https://yourdomain.com
+NEXTAUTH_URL=https://nerovia.de
 NEXTAUTH_SECRET=$(openssl rand -base64 32)
 
 # Docker
-DOCKER_IMAGE=ghcr.io/your-username/reiseblog:latest
+DOCKER_IMAGE=ghcr.io/langhoangtien/nerovia:latest
 
 # S3 (nếu có)
 AWS_ACCESS_KEY_ID=xxx
@@ -242,6 +244,7 @@ RUN_MIGRATIONS=true
 ```
 
 **Generate NEXTAUTH_SECRET:**
+
 ```bash
 openssl rand -base64 32
 ```
@@ -254,11 +257,11 @@ Hoặc build thủ công lần đầu:
 
 ```bash
 # Trên VPS, build local (nếu chưa có image):
-cd /opt/reiseblog
-git clone https://github.com/your-username/reiseblog.git src
+cd /opt/nerovia
+git clone https://github.com/langhoangtien/travel-blog.git src
 cd src/nextjs_space
-docker build -t ghcr.io/your-username/reiseblog:latest .
-cd /opt/reiseblog
+docker build -t ghcr.io/langhoangtien/nerovia:latest .
+cd /opt/nerovia
 ```
 
 ### 5.4 Khởi chạy
@@ -418,6 +421,7 @@ sudo nano /etc/ssh/sshd_config
 ```
 
 Các thay đổi khuyến nghị:
+
 ```
 PermitRootLogin no
 PasswordAuthentication no
@@ -439,6 +443,7 @@ sudo ufw delete allow ssh
 ### 7.4 Docker Security
 
 Đã được cấu hình trong Dockerfile và docker-compose:
+
 - App chạy với user `nextjs` (non-root, UID 1001)
 - Resource limits: 512MB RAM, 1 CPU
 - PostgreSQL không expose port ra ngoài
@@ -507,6 +512,7 @@ chmod +x scripts/rollback.sh
 ```
 
 Script sẽ:
+
 1. Tìm image tag `previous` (được tự động lưu mỗi lần deploy)
 2. Hỏi xác nhận
 3. Khởi động lại với image cũ
@@ -619,6 +625,7 @@ docker system prune -f --volumes
    - Hoặc thủ công trên VPS với `scripts/migrate.sh`
 
 3. **Flow an toàn:**
+
    ```
    a. Backup database
    b. Chạy migration (prisma migrate deploy)
@@ -628,6 +635,7 @@ docker system prune -f --volumes
    ```
 
 4. **Backup trước migration:**
+
    ```bash
    docker exec reiseblog-db pg_dump -U reiseblog reiseblog > \
        /opt/reiseblog/backups/pre-migration-$(date +%Y%m%d).sql

@@ -95,3 +95,7 @@ Thumbs.db
 # Misc
 # =========================
 .abacus*
+
+# Uploads
+next_space/public/uploads/**/*
+!next_space/public/uploads/**/.gitkeep

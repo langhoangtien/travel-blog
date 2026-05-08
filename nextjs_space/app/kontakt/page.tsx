@@ -29,7 +29,7 @@ export default async function ContactPage() {
     select: { title: true, slug: true },
   });
 
-  const contactEmail = config.contactEmail || "kontakt@reiseblog.de";
+  const contactEmail = config.contactEmail || "kontakt@nerovia.de";
   const locationText =
     config.locationText || "Weltweit unterwegs — digitale Redaktion";
 
