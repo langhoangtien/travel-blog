@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
 import { getSiteConfig } from "@/lib/site-config";
 import PublicHeader from "@/components/public/header";
